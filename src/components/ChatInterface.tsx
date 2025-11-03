@@ -3,24 +3,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Bot, User, Loader2 } from "lucide-react";
+import { Send, Bot, User, Loader2, Image as ImageIcon, X } from "lucide-react";
 import { toast } from "sonner";
 
 interface Message {
   role: "user" | "assistant";
-  content: string;
+  content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
 }
 
 const ChatInterface = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Hello! I'm your AI health assistant. I can help you learn about diseases, symptoms, and prevention. How can I assist you today?",
+      content: "Hello! I'm your AI health assistant. I can help you learn about diseases, symptoms, and prevention. You can also upload images for analysis. How can I assist you today?",
     },
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -115,12 +117,50 @@ const ChatInterface = () => {
     }
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
 
-    const userMessage: Message = { role: "user", content: input };
+    Array.from(files).forEach((file) => {
+      if (file.size > 20 * 1024 * 1024) {
+        toast.error("Image must be less than 20MB");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setSelectedImages((prev) => [...prev, result]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeImage = (index: number) => {
+    setSelectedImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSend = async () => {
+    if ((!input.trim() && selectedImages.length === 0) || isLoading) return;
+
+    let userMessage: Message;
+    
+    if (selectedImages.length > 0) {
+      const content = [
+        ...(input.trim() ? [{ type: "text", text: input }] : []),
+        ...selectedImages.map((img) => ({
+          type: "image_url",
+          image_url: { url: img },
+        })),
+      ];
+      userMessage = { role: "user", content };
+    } else {
+      userMessage = { role: "user", content: input };
+    }
+
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
+    setSelectedImages([]);
     setIsLoading(true);
 
     await streamChat(userMessage);
@@ -156,7 +196,32 @@ const ChatInterface = () => {
                     : "bg-muted text-foreground"
                 }`}
               >
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                {typeof message.content === "string" ? (
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                ) : (
+                  <div className="space-y-2">
+                    {message.content.map((item, idx) => {
+                      if (item.type === "text") {
+                        return (
+                          <p key={idx} className="text-sm leading-relaxed whitespace-pre-wrap">
+                            {item.text}
+                          </p>
+                        );
+                      }
+                      if (item.type === "image_url" && item.image_url) {
+                        return (
+                          <img
+                            key={idx}
+                            src={item.image_url.url}
+                            alt="Uploaded"
+                            className="rounded-lg max-w-full h-auto"
+                          />
+                        );
+                      }
+                      return null;
+                    })}
+                  </div>
+                )}
               </div>
               {message.role === "user" && (
                 <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center flex-shrink-0">
@@ -179,18 +244,55 @@ const ChatInterface = () => {
       </ScrollArea>
       
       <div className="p-4 border-t border-border/50">
+        {selectedImages.length > 0 && (
+          <div className="flex gap-2 mb-2 flex-wrap">
+            {selectedImages.map((img, idx) => (
+              <div key={idx} className="relative">
+                <img
+                  src={img}
+                  alt={`Upload ${idx + 1}`}
+                  className="w-20 h-20 object-cover rounded-lg"
+                />
+                <Button
+                  size="icon"
+                  variant="destructive"
+                  className="absolute -top-2 -right-2 w-6 h-6"
+                  onClick={() => removeImage(idx)}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="flex gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImageSelect}
+            className="hidden"
+          />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading}
+          >
+            <ImageIcon className="w-4 h-4" />
+          </Button>
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Ask about symptoms, diseases, or prevention..."
+            placeholder="Ask about symptoms, diseases, or upload an image..."
             disabled={isLoading}
             className="flex-1"
           />
           <Button
             onClick={handleSend}
-            disabled={isLoading || !input.trim()}
+            disabled={isLoading || (!input.trim() && selectedImages.length === 0)}
             className="bg-primary hover:bg-primary/90"
           >
             <Send className="w-4 h-4" />
