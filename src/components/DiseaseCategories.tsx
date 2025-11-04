@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Heart, Brain, Droplets, Wind, Shield } from "lucide-react";
+import { Activity, Heart, Brain, Droplets, Wind, Shield, Sprout, Bug, Leaf, Sun, Wheat, CloudRain } from "lucide-react";
 
 const categories = [
   {
@@ -38,15 +38,51 @@ const categories = [
     description: "Vaccinations, screenings, lifestyle tips",
     color: "text-green-500",
   },
+  {
+    icon: Sprout,
+    title: "Crop Diseases",
+    description: "Fungal, bacterial, viral plant diseases",
+    color: "text-emerald-600",
+  },
+  {
+    icon: Bug,
+    title: "Pest Management",
+    description: "Insect control, prevention strategies",
+    color: "text-amber-600",
+  },
+  {
+    icon: Leaf,
+    title: "Plant Nutrition",
+    description: "Soil health, fertilizers, deficiencies",
+    color: "text-lime-600",
+  },
+  {
+    icon: Wheat,
+    title: "Crop Care",
+    description: "Cultivation practices, crop rotation",
+    color: "text-yellow-600",
+  },
+  {
+    icon: CloudRain,
+    title: "Weather & Irrigation",
+    description: "Water management, climate adaptation",
+    color: "text-sky-600",
+  },
+  {
+    icon: Sun,
+    title: "Sustainable Farming",
+    description: "Organic methods, best practices",
+    color: "text-orange-400",
+  },
 ];
 
 const DiseaseCategories = () => {
   return (
     <div className="w-full max-w-6xl mx-auto py-12">
       <div className="text-center mb-10">
-        <h2 className="text-3xl font-bold text-foreground mb-3">Health Information Categories</h2>
+        <h2 className="text-3xl font-bold text-foreground mb-3">Information Categories</h2>
         <p className="text-muted-foreground text-lg">
-          Explore reliable information across various health topics
+          Explore health and agriculture topics for humans and farmers
         </p>
       </div>
       

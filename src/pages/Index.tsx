@@ -14,20 +14,20 @@ const Index = () => {
           <div className="text-center max-w-4xl mx-auto mb-12">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary mb-6 text-sm font-medium">
               <Shield className="w-4 h-4" />
-              Trusted Health Information
+              Trusted Health & Agriculture Information
             </div>
             
             <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-6 leading-tight">
               Your AI-Powered
               <br />
               <span className="bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent">
-                Health Companion
+                Health & Agriculture Assistant
               </span>
             </h1>
             
             <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
-              Get instant access to reliable disease information, symptoms, and prevention tips.
-              Available 24/7 to help you make informed health decisions.
+              Get instant access to reliable health and crop disease information. 
+              For farmers and families—available 24/7 to help with medical and agricultural decisions.
             </p>
 
             {/* Features */}
@@ -44,8 +44,8 @@ const Index = () => {
                 <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center">
                   <Globe className="w-6 h-6 text-secondary" />
                 </div>
-                <h3 className="font-semibold text-foreground">WHO & CDC Data</h3>
-                <p className="text-sm text-muted-foreground">Information from trusted sources</p>
+                <h3 className="font-semibold text-foreground">Trusted Sources</h3>
+                <p className="text-sm text-muted-foreground">WHO, CDC, agricultural experts</p>
               </div>
               
               <div className="flex flex-col items-center gap-2 p-4">
@@ -78,7 +78,7 @@ const Index = () => {
               <strong className="text-foreground">Important:</strong> This chatbot provides educational information only.
             </p>
             <p>
-              Always consult qualified healthcare professionals for medical advice, diagnosis, and treatment.
+              Always consult qualified healthcare professionals for medical advice and agricultural experts for complex farming issues.
             </p>
           </div>
         </div>

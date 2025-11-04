@@ -15,7 +15,7 @@ const ChatInterface = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Hello! I'm your AI health assistant. I can help you learn about diseases, symptoms, and prevention. You can also upload images for analysis. How can I assist you today?",
+      content: "Hello! I'm your AI assistant for health and agriculture. I can help you with:\n\n🏥 Human Health: Diseases, symptoms, prevention, and medical information\n🌾 Agriculture: Crop diseases, pest management, farming problems, and solutions\n\nUpload images of crops or describe your concerns. How can I assist you today?",
     },
   ]);
   const [input, setInput] = useState("");
@@ -286,7 +286,7 @@ const ChatInterface = () => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Ask about symptoms, diseases, or upload an image..."
+            placeholder="Ask about health, crop diseases, or upload an image..."
             disabled={isLoading}
             className="flex-1"
           />
