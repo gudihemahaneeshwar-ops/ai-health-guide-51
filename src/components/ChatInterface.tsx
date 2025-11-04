@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Bot, User, Loader2, Image as ImageIcon, X, Mic, Square } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface Message {
@@ -23,11 +22,9 @@ const ChatInterface = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [isRecording, setIsRecording] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
+  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -178,69 +175,53 @@ const ChatInterface = () => {
     }
   };
 
-  const startRecording = async () => {
+  const startRecording = () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm'
-      });
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
+      if (!SpeechRecognition) {
+        toast.error("Speech recognition not supported in this browser");
+        return;
+      }
 
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        setIsRecording(true);
+        toast.success("Listening...");
       };
 
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        await transcribeAudio(audioBlob);
-        stream.getTracks().forEach(track => track.stop());
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setInput(transcript);
+        toast.success("Speech recognized!");
       };
 
-      mediaRecorder.start();
-      setIsRecording(true);
-      toast.success("Recording started");
+      recognition.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        setIsRecording(false);
+        toast.error(`Speech recognition error: ${event.error}`);
+      };
+
+      recognition.onend = () => {
+        setIsRecording(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
     } catch (error) {
-      console.error('Error starting recording:', error);
-      toast.error("Failed to access microphone");
+      console.error('Error starting speech recognition:', error);
+      toast.error("Failed to start speech recognition");
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
       setIsRecording(false);
-    }
-  };
-
-  const transcribeAudio = async (audioBlob: Blob) => {
-    setIsTranscribing(true);
-    try {
-      const reader = new FileReader();
-      reader.readAsDataURL(audioBlob);
-      
-      reader.onloadend = async () => {
-        const base64Audio = (reader.result as string).split(',')[1];
-        
-        const { data, error } = await supabase.functions.invoke('speech-to-text', {
-          body: { audio: base64Audio }
-        });
-
-        if (error) throw error;
-
-        if (data?.text) {
-          setInput(data.text);
-          toast.success("Transcription complete");
-        }
-      };
-    } catch (error) {
-      console.error('Transcription error:', error);
-      toast.error("Failed to transcribe audio");
-    } finally {
-      setIsTranscribing(false);
     }
   };
 
@@ -357,7 +338,7 @@ const ChatInterface = () => {
             variant="outline"
             size="icon"
             onClick={isRecording ? stopRecording : startRecording}
-            disabled={isLoading || isTranscribing}
+            disabled={isLoading}
             className={isRecording ? "bg-red-500 hover:bg-red-600 text-white" : ""}
           >
             {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
@@ -366,8 +347,8 @@ const ChatInterface = () => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder={isTranscribing ? "Transcribing..." : "Ask about health, crop diseases, or upload an image..."}
-            disabled={isLoading || isRecording || isTranscribing}
+            placeholder={isRecording ? "Listening..." : "Ask about health, crop diseases, or upload an image..."}
+            disabled={isLoading || isRecording}
             className="flex-1"
           />
           <Button
