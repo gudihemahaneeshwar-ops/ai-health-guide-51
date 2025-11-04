@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Bot, User, Loader2, Image as ImageIcon, X } from "lucide-react";
+import { Send, Bot, User, Loader2, Image as ImageIcon, X, Mic, Square } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface Message {
@@ -21,8 +22,12 @@ const ChatInterface = () => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -173,6 +178,72 @@ const ChatInterface = () => {
     }
   };
 
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm'
+      });
+      
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        await transcribeAudio(audioBlob);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      toast.success("Recording started");
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      toast.error("Failed to access microphone");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const transcribeAudio = async (audioBlob: Blob) => {
+    setIsTranscribing(true);
+    try {
+      const reader = new FileReader();
+      reader.readAsDataURL(audioBlob);
+      
+      reader.onloadend = async () => {
+        const base64Audio = (reader.result as string).split(',')[1];
+        
+        const { data, error } = await supabase.functions.invoke('speech-to-text', {
+          body: { audio: base64Audio }
+        });
+
+        if (error) throw error;
+
+        if (data?.text) {
+          setInput(data.text);
+          toast.success("Transcription complete");
+        }
+      };
+    } catch (error) {
+      console.error('Transcription error:', error);
+      toast.error("Failed to transcribe audio");
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
   return (
     <Card className="w-full max-w-4xl mx-auto h-[600px] flex flex-col shadow-lg border-border/50">
       <ScrollArea className="flex-1 p-6" ref={scrollRef}>
@@ -278,16 +349,25 @@ const ChatInterface = () => {
             variant="outline"
             size="icon"
             onClick={() => fileInputRef.current?.click()}
-            disabled={isLoading}
+            disabled={isLoading || isRecording}
           >
             <ImageIcon className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={isRecording ? stopRecording : startRecording}
+            disabled={isLoading || isTranscribing}
+            className={isRecording ? "bg-red-500 hover:bg-red-600 text-white" : ""}
+          >
+            {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
           </Button>
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Ask about health, crop diseases, or upload an image..."
-            disabled={isLoading}
+            placeholder={isTranscribing ? "Transcribing..." : "Ask about health, crop diseases, or upload an image..."}
+            disabled={isLoading || isRecording || isTranscribing}
             className="flex-1"
           />
           <Button
